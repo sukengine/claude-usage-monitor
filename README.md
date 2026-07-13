@@ -73,6 +73,11 @@ When the Fable bar is rate-limited/absent: `"fable_pct":null,"fable_status":"rat
 
 ## Widget
 
+1. **Install Scriptable** (free) on your iPhone/iPad from the App Store:
+   https://apps.apple.com/app/scriptable/id1405459188 — then open it once.
+2. In Scriptable tap **+** to create a new script and paste the contents of
+   `claude-usage-widget.js` (see config below).
+
 Edit the config block in `claude-usage-widget.js`, then paste into Scriptable:
 ```js
 const UPSTASH_URL = "https://YOUR-DB.upstash.io"

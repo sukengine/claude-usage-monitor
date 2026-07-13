@@ -79,7 +79,9 @@ A single `.js` file for the Scriptable iOS app. Config block at top:
   `#CC785C`, deep clay `#BD4B2F` for high usage (>=85%), ink text `#28261B`, warm gray
   `#8A8981` for muted/rate-limit.
 Deliver the file (with the real read-only token) so I can paste it into Scriptable, and
-keep a placeholder version for git.
+keep a placeholder version for git. Tell me to install the free Scriptable app first
+(App Store: https://apps.apple.com/app/scriptable/id1405459188), then how to add the
+widget to the Home screen and Lock screen.
 
 ## 5. Optional backup — self-host API + Cloudflare Tunnel (optional/cloudflare/)
 Optional, only if I want an independent fallback that doesn't depend on Upstash. Put these
