@@ -1,0 +1,11 @@
+# secrets & runtime data — NEVER commit
+.env
+
+# runtime / generated
+usage.txt
+output.txt
+
+# rate-limit experiment artifacts
+rate-probe.log
+sustain-*.out
+cron.txt
