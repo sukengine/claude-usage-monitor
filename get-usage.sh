@@ -10,9 +10,13 @@ USAGE_FILE="$DIR/usage.txt"
 # โหลด secrets (Upstash write token ฯลฯ) — cron ไม่ source .env ให้เอง
 [ -f "$DIR/.env" ] && set -a && . "$DIR/.env" && set +a
 
-# 1. ส่ง /usage แล้วรอ render
-tmux send-keys -t "$SESSION_NAME" "/usage" C-m
-sleep 3
+# 1. เคลียร์ input ที่อาจค้าง (remote-control/manual mode บางทีไม่ submit) แล้วส่ง /usage
+tmux send-keys -t "$SESSION_NAME" C-u
+sleep 1
+tmux send-keys -t "$SESSION_NAME" "/usage"
+sleep 1
+tmux send-keys -t "$SESSION_NAME" Enter
+sleep 4
 # 2. จับภาพหน้าจอ
 tmux capture-pane -S -160 -pt "$SESSION_NAME" > "$OUTPUT_TMP"
 # 3. ปิดหน้าสถิติ
@@ -32,7 +36,14 @@ if [ -z "$FABLE" ]; then
           | grep -oE '[0-9]+% used' | grep -oE '[0-9]+' | head -1)
 fi
 
-# ไม่มีบรรทัด Fable = โดน rate limit
+# ถ้า session และ week ว่างทั้งคู่ = /usage dialog ไม่ render (session busy/ค้าง)
+# อย่าเขียนทับค่าเดิมด้วย null — ข้ามรอบนี้
+if [ -z "$SESSION" ] && [ -z "$WEEK" ]; then
+  echo "warn: /usage did not render (session/week empty) — keep previous value, skip"
+  exit 0
+fi
+
+# มี session/week แต่ไม่มีบรรทัด Fable = per-model โดน rate limit
 [ -z "$FABLE" ] && FABLE="rate_limited"
 
 # 5. เขียนแบบ key=value (truncate in-place, container เห็นค่าใหม่ทันที)

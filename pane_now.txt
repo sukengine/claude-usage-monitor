@@ -1,0 +1,95 @@
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+❯ /usage
+  ⎿  Settings dialog dismissed
+
+╭─── Claude Code v2.1.207 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting started                                                                                                                                 │
+│               Welcome back Sukkarin!               │ Run /init to create a CLAUDE.md file with instructions for Claude                                                                                        │
+│                                                    │ ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+│                       ▐▛███▜▌                      │ What's new                                                                                                                                               │
+│                      ▝▜█████▛▘                     │ Auto mode is now available without `CLAUDE_CODE_ENABLE_AUTO_MODE` opt-in on Bedrock, Vertex AI, and Foundry; disable via `disableAutoMode` in settings   │
+│                        ▘▘ ▝▝                       │ Fixed the terminal freezing and keystrokes lagging while streaming responses containing very long lists, tables, paragraphs, or code blocks              │
+│ Opus 4.8 (1M context) · Claude Team · MFEC Public  │ Fixed remote managed settings from a non-interactive run (`claude -p`, the SDK) being permanently recorded as consented without ever showing the securi… │
+│ Company Limited                                    │ /release-notes for more                                                                                                                                  │
+│     ~/work/ai-agent-workspace-m1/claude-usage      │                                                                                                                                                          │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ▎ Extended through July 19
+ ▎ We're extending Claude Fable 5 access on all paid plans, as well as keeping Claude Code’s weekly rate limits 50% higher, through July 19.
+ ▎
+ ▎ As before, you can use up to half of your weekly usage limit on Fable 5. After that, you can keep using Fable 5 with usage credits, or switch to another model to keep working within your remaining limits.
+ ▎
+ ▎ More details here: https://support.claude.com/en/articles/15424964-claude-fable-5-promotional-access
+  ⎿  SessionStart:clear hook error
+  ⎿  [cd /home/sukkarin/work/ClaudeCode]: /bin/sh: 1: cd: can't cd to /home/sukkarin/work/ClaudeCode
+
+❯ /clear
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ .../usage/usage/usage
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⬢ m1-host  ~/work/ai-agent-workspace-m1/claude-usage  Opus 4.8 (1M context) │ ctx 0% (0/1.0M) │ tok in:0 out:0 cache:0+0 │ session 2% (2%) · week 88% (88%) │ $0.0000                                      /rc
+  ⏸ manual mode on

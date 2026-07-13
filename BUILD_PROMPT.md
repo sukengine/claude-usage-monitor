@@ -14,8 +14,11 @@ part and verify it before moving on.
 ## 1. Data collector (get-usage.sh)
 There is a long-running tmux session (name: `claude-usage.1`) with `claude` open.
 Write `get-usage.sh` that:
-- sends `/usage` + Enter to the tmux session, waits ~3s for render, captures the pane to
-  `output.txt`, then sends Escape,
+- clears any stuck input first (`C-u`), then sends `/usage` and Enter separately, waits
+  ~4s for render, captures the pane to `output.txt`, then sends Escape. (Remote-control /
+  "manual mode" sessions can otherwise accumulate the text without executing it.)
+- if `session` AND `week` both come back empty, the dialog didn't render — do NOT overwrite
+  the stored value with nulls; log a warning and skip the push this round.
 - parses three limit bars by label and extracts the integer percent of each:
     - `Current session`            -> session
     - `Current week (all models)`  -> week
