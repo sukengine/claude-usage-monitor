@@ -14,8 +14,10 @@
 // ============================================================
 
 // ── ตั้งค่า ──────────────────────────────────────────────
-const API_URL = "https://claude-usage.sasis.site/usage"
-const API_KEY = "YOUR_API_KEY_HERE"  // ← ใส่ค่าจาก .env (X-API-Key)
+// ดึงจาก Upstash Redis (REST) ด้วย read-only token (เขียนทับไม่ได้แม้ token หลุด)
+const UPSTASH_URL = "https://liked-marlin-151530.upstash.io"
+const READ_TOKEN  = "YOUR_UPSTASH_READONLY_TOKEN"  // read-only token จาก Upstash
+const KEY         = "claude:usage"
 
 // สีพื้นหลัง widget บนหน้า Home (hex) — ธีม Anthropic: ครีม/ขาว
 // เปลี่ยนได้ที่นี่ หรือใส่ hex ในช่อง "Parameter" ตอน Edit Widget เพื่อกำหนดเป็นราย widget
@@ -24,10 +26,12 @@ const BG_COLOR = "#F0EEE6"
 // ────────────────────────────────────────────────────────
 
 async function loadUsage() {
-  const req = new Request(API_URL)
-  req.headers = { "X-API-Key": API_KEY }
+  const req = new Request(`${UPSTASH_URL}/get/${encodeURIComponent(KEY)}`)
+  req.headers = { Authorization: `Bearer ${READ_TOKEN}` }
   req.timeoutInterval = 15
-  return await req.loadJSON()
+  const resp = await req.loadJSON()          // {"result":"<json string>"} หรือ result=null
+  if (!resp || resp.result == null) throw new Error("no data in store")
+  return JSON.parse(resp.result)
 }
 
 // ── ธีม Anthropic (ส้ม/ขาว) ───────────────────────────────

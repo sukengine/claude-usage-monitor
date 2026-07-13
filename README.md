@@ -9,9 +9,18 @@ show it in an iPhone **Scriptable** widget.
 
 ## How it works
 
+Two delivery options (get-usage.sh feeds both):
+
 ```
-tmux (claude /usage) → get-usage.sh → usage.txt → server.py (Docker) → Cloudflare Tunnel → Scriptable widget
+A) push model (recommended, no inbound):
+   tmux (claude /usage) → get-usage.sh → Upstash Redis (REST) → Scriptable widget (read-only token)
+
+B) self-host:
+   tmux (claude /usage) → get-usage.sh → usage.txt → server.py (Docker) → Cloudflare Tunnel → widget
 ```
+
+Option A needs no public exposure — the collector only makes an outbound HTTPS POST, and
+the widget reads with a **read-only** token. Set `UPSTASH_*` in `.env` to enable it.
 
 | Component | File | Role |
 |---|---|---|

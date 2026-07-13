@@ -3,8 +3,12 @@
 # รูปแบบ key=value; ถ้าไม่มีบรรทัด Fable (โดน rate limit/render ไม่ครบ) => fable=rate_limited
 
 SESSION_NAME="claude-usage.1"
-OUTPUT_TMP="/home/sukkarin/work/ai-agent-workspace-m1/claude-usage/output.txt"
-USAGE_FILE="/home/sukkarin/work/ai-agent-workspace-m1/claude-usage/usage.txt"
+DIR="/home/sukkarin/work/ai-agent-workspace-m1/claude-usage"
+OUTPUT_TMP="$DIR/output.txt"
+USAGE_FILE="$DIR/usage.txt"
+
+# โหลด secrets (Upstash write token ฯลฯ) — cron ไม่ source .env ให้เอง
+[ -f "$DIR/.env" ] && set -a && . "$DIR/.env" && set +a
 
 # 1. ส่ง /usage แล้วรอ render
 tmux send-keys -t "$SESSION_NAME" "/usage" C-m
@@ -38,4 +42,20 @@ fi
   echo "fable=${FABLE}"
 } > "$USAGE_FILE"
 
-echo "saved: session=${SESSION:-?} week=${WEEK:-?} fable=${FABLE}"
+# 6. push JSON ขึ้น Upstash (push model — ไม่ต้องเปิด server ออก public)
+if [ -n "$UPSTASH_REDIS_REST_URL" ] && [ -n "$UPSTASH_WRITE_TOKEN" ]; then
+  TS=$(TZ='Asia/Bangkok' date -Iseconds)
+  if [ "$FABLE" = "rate_limited" ]; then
+    FJSON='"fable_pct":null,"fable_status":"rate_limited"'
+  else
+    FJSON="\"fable_pct\":${FABLE},\"fable_status\":\"ok\""
+  fi
+  JSON="{\"session_pct\":${SESSION:-null},\"week_pct\":${WEEK:-null},${FJSON},\"updated\":\"${TS}\"}"
+  curl -s -X POST "$UPSTASH_REDIS_REST_URL/set/claude:usage" \
+       -H "Authorization: Bearer $UPSTASH_WRITE_TOKEN" \
+       --data-raw "$JSON" >/dev/null && PUSH="ok" || PUSH="fail"
+else
+  PUSH="skipped (no upstash env)"
+fi
+
+echo "saved: session=${SESSION:-?} week=${WEEK:-?} fable=${FABLE} | upstash=$PUSH"
