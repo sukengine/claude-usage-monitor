@@ -27,17 +27,43 @@ widget reads with a **read-only** token, so even if it leaks it can't overwrite 
 
 ## Setup
 
-1. Create a free database at [upstash.com](https://upstash.com) (Redis). Grab the REST URL,
-   the (write) REST token, and create a **read-only** token.
-2. Configure `.env` (git-ignored):
+> **Claude Code users — the easy way:** clone this repo, `cd` into it, open Claude Code and
+> paste the prompt from [`BUILD_PROMPT.md`](BUILD_PROMPT.md). It walks through every step
+> below (asks you for the Upstash URL/tokens and your tmux session, wires `.env` + cron,
+> fills the widget, and verifies each part). The manual steps are below if you prefer.
+
+### Prerequisites
+- A tmux session running `claude` so `/usage` can be scraped. If you don't have one:
+  ```bash
+  tmux new -d -s claude-usage        # then attach and run `claude` inside; target = claude-usage.1
+  ```
+- A free [Upstash](https://upstash.com) Redis database (login with GitHub/Google).
+
+### Steps
+1. **Get Upstash credentials.** In the Upstash console open your Redis DB → REST API:
+   copy the **REST URL** and the (write) **REST token**, then create a **read-only** token
+   (Tokens → create, read-only). Keep the two tokens separate.
+2. **Configure `.env`** (git-ignored):
    ```bash
    cp .env.example .env
-   # set UPSTASH_REDIS_REST_URL and UPSTASH_WRITE_TOKEN
+   # edit .env: set UPSTASH_REDIS_REST_URL and UPSTASH_WRITE_TOKEN
+   chmod 600 .env
    ```
-3. Schedule the collector (see the rate-limit note — do not go faster than 5 min):
+3. **Adjust paths** in `get-usage.sh`: set `DIR` to this repo's absolute path and
+   `SESSION_NAME` to your tmux session (e.g. `claude-usage.1`). `chmod +x get-usage.sh`.
+4. **Test the collector once** and confirm it pushed:
+   ```bash
+   ./get-usage.sh                     # expect: "saved: ... | upstash=ok"
+   # verify the widget's read path (read-only token):
+   curl -s "$UPSTASH_REDIS_REST_URL/get/claude:usage" \
+        -H "Authorization: Bearer <READ_ONLY_TOKEN>"
+   ```
+5. **Schedule it** — every 5 minutes, never faster (see the rate-limit note):
    ```cron
-   */5 * * * * bash -c /path/to/claude-usage/get-usage.sh
+   */5 * * * * bash -c /abs/path/to/claude-usage/get-usage.sh
    ```
+6. **Configure the widget** (next section) with your `UPSTASH_URL` + read-only token, then
+   paste it into Scriptable.
 
 `get-usage.sh` stores this JSON under the Redis key `claude:usage`:
 ```json
