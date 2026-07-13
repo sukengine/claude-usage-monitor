@@ -5,13 +5,15 @@ services:
     restart: unless-stopped
     working_dir: /app
     command: ["python", "server.py"]
+    # .env อยู่ที่ repo root (สองระดับขึ้นไป) — ต้องมี API_KEY
+    env_file:
+      - ../../.env
     environment:
-      API_KEY: ${API_KEY:?set API_KEY in .env}
       USAGE_FILE: /data/usage.txt
       PORT: "8000"
     volumes:
       - ./server.py:/app/server.py:ro
-      - ./usage.txt:/data/usage.txt:ro
+      - ../../usage.txt:/data/usage.txt:ro   # usage.txt ผลิตโดย get-usage.sh ที่ repo root
     ports:
       - "8091:8000"
     networks:
