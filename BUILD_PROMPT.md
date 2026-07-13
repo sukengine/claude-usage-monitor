@@ -1,77 +1,102 @@
 # Build prompt — Claude usage monitor stack
 
-A single prompt to hand to Claude Code to build this project end-to-end.
+A single prompt to hand to Claude Code to build this project end-to-end. The **primary**
+delivery is the Upstash push model (no public exposure); the Docker + Cloudflare Tunnel
+path is an optional backup.
 
 ---
 
-Build a "Claude usage" monitoring stack on this Linux host that exposes my Claude Code
-usage as a private JSON API and displays it in an iPhone Scriptable widget. Work in
-`./claude-usage`. Implement all parts below and verify each one before moving on.
+Build a "Claude usage" monitoring stack on this Linux host that shows my Claude Code usage
+(session / weekly / Fable %) on an iPhone Scriptable widget, using a free cloud key-value
+store so nothing on my host has to be exposed. Work in `./claude-usage`. Implement each
+part and verify it before moving on.
 
 ## 1. Data collector (get-usage.sh)
 There is a long-running tmux session (name: `claude-usage.1`) with `claude` open.
 Write `get-usage.sh` that:
-- sends `/usage` + Enter to the tmux session, waits ~3s for render,
-- captures the pane to `output.txt`, then sends Escape,
+- sends `/usage` + Enter to the tmux session, waits ~3s for render, captures the pane to
+  `output.txt`, then sends Escape,
 - parses three limit bars by label and extracts the integer percent of each:
     - `Current session`            -> session
     - `Current week (all models)`  -> week
     - `Current week (Fable)`       -> fable   (fallback: any `Current week (...)` line
                                                that is NOT `(all models)`)
-- IMPORTANT: if the Fable line is missing (the per-model section is rate-limited /
-  didn't render), write `fable=rate_limited` instead of a number.
-- writes `usage.txt` in key=value form (`session=`/`week=`/`fable=`), truncating in place
-  so a bind-mounted container sees updates without a restart.
+- if the Fable line is missing (per-model section rate-limited / not rendered), treat
+  fable as `rate_limited` (not a number),
+- writes `usage.txt` in key=value form (`session=`/`week=`/`fable=`), truncating in place,
+- then PUSHES the result to Upstash (see part 2).
+- loads `./.env` at the top (cron does not source it): `set -a; . ./.env; set +a`.
+- use absolute paths (define a `DIR` var).
 
-## 2. HTTP API (server.py + docker-compose.yml, NO Dockerfile)
-- Pure Python stdlib only (no pip). ThreadingHTTPServer.
-- Reads `usage.txt` each request; returns JSON:
-    `{"session_pct":N,"week_pct":N,"fable_pct":N|null,"fable_status":"ok|rate_limited|unknown","updated":ISO8601}`
-  Parse key=value; when `fable=rate_limited` -> `fable_pct` null + status `rate_limited`.
-  Keep a fallback parser for the old `N% used` line format.
-- Timestamp `updated` from `usage.txt` mtime in Asia/Bangkok (UTC+7).
-- Auth: require a random 32-char API key via header `X-API-Key` OR `Authorization: Bearer`.
-  Use `hmac.compare_digest`. Generate the key, store it in `.env` (chmod 600), inject via
-  compose env. `GET /usage` requires auth; `GET /health` is public.
-- `docker-compose.yml`: run `image: python:3.12-slim` with `command: ["python","server.py"]`,
-  mount `./server.py` and `./usage.txt` read-only, publish a host port (e.g. 8091->8000),
-  `restart: unless-stopped`.
-- Bring it up with `docker compose up -d` and test: /health=200, no key=401, wrong key=401,
-  correct key (both header styles)=200.
+## 2. Upstash (primary delivery — no inbound exposure)
+Use a free Upstash Redis database (REST API). The collector only makes an OUTBOUND POST;
+the widget reads the value back. Two tokens:
+- a **write** token — used by `get-usage.sh`, kept in `.env` (git-ignored),
+- a **read-only** token — embedded in the widget (so a leak can't overwrite data).
+Verify which token is which by testing: a read-only token must fail a `SET` with NOPERM.
 
-## 3. Cloudflare tunnel wiring
-There is already a running token-based `cloudflared` container on an external docker
-network. The tunnel CANNOT reach host localhost, so attach the API container to that
-same external network (declare it in compose as `external`) and point the tunnel's public
-hostname to `http://<api-container-name>:8000`. Verify the public HTTPS URL returns 200
-for /health and authenticated /usage.
+`get-usage.sh` stores this JSON under the Redis key `claude:usage` (timestamp in
+Asia/Bangkok):
+```json
+{"session_pct":N,"week_pct":N,"fable_pct":N|null,"fable_status":"ok|rate_limited","updated":"ISO8601+07:00"}
+```
+Push with:
+```bash
+curl -s -X POST "$UPSTASH_REDIS_REST_URL/set/claude:usage" \
+     -H "Authorization: Bearer $UPSTASH_WRITE_TOKEN" --data-raw "$JSON"
+```
+Read back with the read-only token to confirm: `GET $URL/get/claude:usage` returns
+`{"result":"<the json string>"}`.
 
-## 4. Cron scheduling — respect the rate limit
-The `/usage` data comes from an endpoint cached ~5 minutes server-side; polling too often
-rate-limits the per-model breakdown and HIDES the Fable bar. Empirically a 1–2 minute
-interval gets throttled and recovery takes >8 minutes. So schedule `get-usage.sh` via cron
-at every 5 minutes (`*/5`). Do not go tighter — the iOS widget only refreshes every
-~15–30 min anyway, so faster polling gives no benefit and risks throttling.
+Put in `.env` (chmod 600, git-ignored): `UPSTASH_REDIS_REST_URL`, `UPSTASH_WRITE_TOKEN`
+(and `API_KEY` only if you also build the optional path in part 5).
 
-## 5. Scriptable widget (claude-usage-widget.js)
-A single `.js` file for the Scriptable iOS app that fetches the API and renders:
-- Config block at top: `API_URL`, `API_KEY`, and `BG_COLOR` (hex). Allow per-widget
-  override of the background via the Scriptable "Parameter" field (accept `#RRGGBB` or
-  `RRGGBB`).
+## 3. Cron — respect the rate limit
+`/usage` reads a server-side endpoint cached ~5 min; polling too often rate-limits the
+per-model breakdown and HIDES the Fable bar. Measured: 1 min throttles; 2 min survives ~5
+calls then throttles; 3 min couldn't even be validated (still throttled after 15 min
+quiet); recovery from a throttle takes roughly an hour. The iOS widget only refreshes
+every ~15–30 min anyway. So schedule at **every 5 minutes**, never tighter:
+```cron
+*/5 * * * * bash -c /abs/path/claude-usage/get-usage.sh
+```
+
+## 4. Scriptable widget (claude-usage-widget.js)
+A single `.js` file for the Scriptable iOS app. Config block at top:
+`UPSTASH_URL`, `READ_TOKEN` (read-only), `KEY = "claude:usage"`, `BG_COLOR` (hex).
+- Fetch `GET {UPSTASH_URL}/get/{KEY}` with `Authorization: Bearer {READ_TOKEN}`, then
+  `JSON.parse(resp.result)`. Handle `result == null` and network errors gracefully.
 - Detect `config.widgetFamily` and render:
-    - `accessoryCircular`   : a single-value ring gauge (session%) drawn with DrawContext
+    - `accessoryCircular`   : single-value ring gauge (session%) via DrawContext
     - `accessoryRectangular`: Session / Week / Fable
     - `accessoryInline`     : compact `Claude S..% W..% F..%`
     - Home Small/Medium     : card with Session, Week, Fable rows + `updated HH:MM` footer
-  Note: Lock Screen (accessory) widgets can't set a background — iOS controls it.
-- Fable display: show `%`, but if `fable_status=="rate_limited"` (or `fable_pct` null) show
-  the text `rate limit`.
+- Fable: show `%`, but if `fable_status=="rate_limited"` (or `fable_pct` null) show the
+  text `rate limit`.
+- Allow per-widget background override via the Scriptable "Parameter" field (`#RRGGBB`).
+  Note: Lock Screen widgets can't set a background — iOS controls it.
 - Theme = Anthropic (orange/cream): background cream `#F0EEE6`, values Claude clay
   `#CC785C`, deep clay `#BD4B2F` for high usage (>=85%), ink text `#28261B`, warm gray
-  `#8A8981` for muted/rate-limit. Ensure text contrast works on the light background.
-- Handle fetch errors gracefully (render an error state, never crash).
-Deliver the file so I can paste it into Scriptable.
+  `#8A8981` for muted/rate-limit.
+Deliver the file (with the real read-only token) so I can paste it into Scriptable, and
+keep a placeholder version for git.
+
+## 5. Optional backup — self-host API + Cloudflare Tunnel (optional/cloudflare/)
+Optional, only if I want an independent fallback that doesn't depend on Upstash. Put these
+under `optional/cloudflare/`:
+- `server.py` — pure Python stdlib HTTP server; reads the repo-root `usage.txt`; returns
+  the same JSON shape; auth via a 32-char key (`X-API-Key` or `Authorization: Bearer`,
+  `hmac.compare_digest`); `/health` public, `/usage` authed.
+- `docker-compose.yml` — `image: python:3.12-slim` (NO Dockerfile), `command: python
+  server.py`, mount `./server.py` and `../../usage.txt` read-only, `env_file: ../../.env`,
+  publish `8091:8000`, and attach to the existing external docker network
+  `0-tunnel_cloudflared` so the token-based `cloudflared` container can reach it at
+  `http://claude-usage-api:8000` (it cannot reach host localhost). Point the tunnel's
+  public hostname there.
+`get-usage.sh` already writes `usage.txt`, so this path works alongside the Upstash push.
 
 ## General
-- Use absolute paths in cron/scripts. Keep the API key out of any git history.
+- Keep every secret out of git: `.env` git-ignored; the committed widget and compose use
+  placeholders; scripts read secrets from `.env`.
+- Use absolute paths in cron/scripts.
 - After each part, actually run/curl it and show the result, not just the code.
