@@ -10,15 +10,6 @@ USAGE_FILE="$DIR/usage.txt"
 # โหลด secrets (Upstash write token ฯลฯ) — cron ไม่ source .env ให้เอง
 [ -f "$DIR/.env" ] && set -a && . "$DIR/.env" && set +a
 
-# อัปเดตเฉพาะตอนกำลัง attach เข้า claude container ทำงานอยู่ (./cl = docker attach).
-# docker attach เป็น foreground process ที่อยู่ตราบที่ยัง attach, detach(Ctrl-]) แล้วมันจบเอง.
-# ตั้ง ATTACH_GATE=0 ใน .env เพื่อปิด gate นี้ (อัปเดตตลอด)
-ATTACH_PATTERN="${ATTACH_PATTERN:-^docker attach .*-claude-1}"
-if [ "${ATTACH_GATE:-1}" = "1" ] && ! ps -eo args 2>/dev/null | grep -Eq "$ATTACH_PATTERN"; then
-  echo "detached — skip update (session% ไม่ขยับตอนไม่ได้ทำงาน)"
-  exit 0
-fi
-
 # 1. เคลียร์ input ที่อาจค้าง (remote-control/manual mode บางทีไม่ submit) แล้วส่ง /usage
 tmux send-keys -t "$SESSION_NAME" C-u
 sleep 1
