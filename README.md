@@ -88,6 +88,16 @@ const BG_COLOR    = "#F0EEE6"   // Home background; or set per-widget via the Pa
 Add it to the Home screen (Small/Medium) or Lock screen (circular / rectangular / inline).
 Lock-screen widgets are tinted by iOS — background color applies to Home only.
 
+## Claude Code statusline (bonus consumer)
+
+`statusline.sh` renders the pushed value inside a Claude Code session's status line as
+`session <payload>% [<real>%]` — the main number is Claude's own rate-limit snapshot, the
+bracketed one is the authoritative value from Upstash (`session`/`week`). It fetches with
+curl or wget (whichever the image has), caches once per 5-minute slot **aligned to :00:30 /
+:05:30** (≈30 s after the `*/5` writer, so it always reads a fresh push), and only runs
+while the session is being rendered — so a detached/idle container makes no requests. Set
+`UPSTASH_URL` / `UPSTASH_READ_TOKEN` (read-only) via env or edit the defaults at the top.
+
 ## ⚠️ Rate limit — poll every 5 minutes, not faster
 
 `/usage` reads a server-side endpoint cached ~5 min. Polling too often rate-limits the
