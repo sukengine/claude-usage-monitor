@@ -102,3 +102,11 @@ per-model breakdown and **hides the Fable bar**. Measured on this account:
 
 Recovery from a throttle is slow — **>15 min, roughly an hour**. The iOS widget only
 refreshes every ~15–30 min anyway, so faster polling gives no real benefit. **Use `*/5`.**
+
+## Update only while attached (optional)
+
+`get-usage.sh` skips its run when you're **not** attached to your claude container — the
+session % doesn't move while you're away, so there's no point scraping (and no point
+interrupting the session when you *are* working). It detects the `./cl` docker-attach by a
+live `docker attach … -claude-1` process. Disable the gate with `ATTACH_GATE=0` in `.env`,
+or change the match with `ATTACH_PATTERN`.

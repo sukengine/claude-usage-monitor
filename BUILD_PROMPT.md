@@ -19,6 +19,9 @@ Write `get-usage.sh` that:
   "manual mode" sessions can otherwise accumulate the text without executing it.)
 - if `session` AND `week` both come back empty, the dialog didn't render — do NOT overwrite
   the stored value with nulls; log a warning and skip the push this round.
+- (optional) only update while I'm actively attached to my claude container: gate on a
+  running `docker attach ... -claude-1` process (`ps -eo args | grep -E '^docker attach .*-claude-1'`);
+  skip when detached. Make it toggleable via `ATTACH_GATE` in `.env`.
 - parses three limit bars by label and extracts the integer percent of each:
     - `Current session`            -> session
     - `Current week (all models)`  -> week
